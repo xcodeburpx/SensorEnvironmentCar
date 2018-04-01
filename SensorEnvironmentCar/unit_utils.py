@@ -1,15 +1,11 @@
 import math
 import numpy as np
 
-import pygame
-from pygame.color import THECOLORS
-
-import pymunk
-from pymunk.vec2d import Vec2d
-
 from macro_utils import *
 
 
+# Unit class - our circle car
+# TODO: Rectangle car
 class Unit:
 
     def __init__(self, env, x, y, r, name="user", color=THECOLORS['yellow']):
@@ -53,10 +49,10 @@ class Unit:
         if not speed:
             # If we have no angle
             if not angle:
-                self.speed = 100
+                self.speed = 30
                 self.body.velocity = self.direction * self.speed
             else:
-                self.speed = 50
+                self.speed = 30
                 self.body.angle -= angle
                 self.direction = Vec2d(1, 0).rotated(self.body.angle)
                 self.body.velocity = self.direction * self.speed
@@ -71,8 +67,9 @@ class Unit:
                 self.direction = Vec2d(1, 0).rotated(self.body.angle)
                 self.body.velocity = self.direction * self.speed
 
-    # Method - get sensor data - collect state values
+        #self.body.update_position(self.body, 0.01)
 
+    # Method - get sensor data - collect state values
     def get_sensor_data(self):
 
         data = []  # Collected data - normalized state values
@@ -101,9 +98,6 @@ class Unit:
                     draw_x = x
                     draw_y = y
 
-                # Get color at this point
-                color = self.env.display.get_at((int(x), int(y)))
-
                 # If it is out of bound
                 if x >= WIDTH or y >= HEIGHT or x < 0 or y < 0:
                     # Option to draw
@@ -129,6 +123,9 @@ class Unit:
                     data.append(val)
                     break
 
+                # Get color at this point
+                color = self.env.display.get_at((int(x), int(y)))
+
                 # If color is different than scene or sensor color
                 if color == BG_COLOR or color == SENSORS_COLOR or color == ALARM_COLOR:
                     continue
@@ -149,14 +146,13 @@ class Unit:
 
         # Small step count
 
-        count = 10
-
+        count = 6
         for _ in range(count):
 
             # Optional draw options
             draw_options = DrawOptions(self.env.display)
 
-            self.move(speed = 60, angle=ang/3)
+            self.move(speed = 60, angle=-ang/5)
 
             if self.name == "user":
                 self.env.display.fill(ALARM_COLOR)
@@ -182,16 +178,24 @@ class Unit:
 
 
     # Method - reward function - depends on state and action
-
+    # TODO - Change reward system to more robust if this fails
     def get_reward(self, data, action):
 
-        if COLL_THRESH in data:
-            reward = -10
-            # Turn around in opossite angle
-            self.is_collision(self.sensors[data.index(COLL_THRESH)])
-        else:
-            # Check only negative reward
-            reward = 0
+        for d in data:
+            if d <= COLL_THRESH:
+                reward = NEG_REWARD
+                # Turn around in opossite angle
+                if data.index(d) == 2:
+                    #print("MIDDLE FLIP")
+                    self.is_collision(math.pi/5)
+                else:
+                    #print("SIDE FLIP - ", self.sensors[data.index(d)], "INDEX-", data.index(d))
+                    self.is_collision(self.sensors[data.index(d)])
+                return reward
+
+        reward = np.sum(data)/ACTION_DECREMENT[action]
+
+        #reward = 0
 
         return reward
 

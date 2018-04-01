@@ -10,6 +10,7 @@ from macro_utils import *
 from unit_utils import Unit
 
 
+# Environment class - create obstacles + our unit
 class Environment:
 
     def __init__(self):
@@ -35,6 +36,7 @@ class Environment:
         self.borders.append(pymunk.Segment(
             self.space.static_body, (0, 1), (WIDTH, 1), 5))
 
+        # Border attributes
         for border in self.borders:
             border.friction = 1.05
             border.filter = pymunk.ShapeFilter(group=1)
@@ -112,6 +114,7 @@ class Environment:
         if len(self.unit.positions) > 10:
             self.unit.positions.pop(0)
 
+        # TODO: Connect this with reward
         if len(self.unit.positions) == 10:
             base_position = self.unit.positions[0]
             positions_to_check = np.array(self.unit.positions[1:])
@@ -126,13 +129,15 @@ class Environment:
 
         reward = self.unit.get_reward(data, action)
 
-        if reward == -10:
+        # If there is a collision
+        if reward == NEG_REWARD:
             done = True
         else:
             done = False
 
-        return state, reward, done
+        return state, reward, done, self.unit.body.position
 
+    # Drawing option - increase computation speed by separating drawing from getting state and reward
     def render(self):
 
         draw_options = DrawOptions(self.display)
@@ -146,20 +151,20 @@ class Environment:
         if not self.drawing_on:
             pygame.display.flip()
         self.clock.tick()
-        time.sleep(0.1)
 
 
+# Main test
+# Unfortunately we need to use render - step doesn't change positions of objects on the map
+# Will fix next time
 if __name__ == '__main__':
     env = Environment()
-    action = np.random.randint(0,4)
-    zero_state, _, _ = env.step(action)
+    action = 0
+    zero_state, _, _, _= env.step(action)
 
-    for i in range(10000):
-        if i % 5 == 0 and i != 0:
-            env.render()
+    for i in range(100000):
 
-        action = np.random.randint(0, 4)
-        state, reward, done = env.step(action)
-
-        print(state, ACTION_NAMES[action], reward, done)
-        time.sleep(0.5)
+        action = 0
+        state, reward, done, position = env.step(action)
+        env.render()
+        print(state, reward, position)
+        time.sleep(0.1)
